@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -23,7 +24,7 @@
             margin: 0 auto;
             background: white;
             border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
             padding: 30px;
         }
 
@@ -89,7 +90,7 @@
             aspect-ratio: 9/16;
             overflow: hidden;
             border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
             background: #f0f0f0;
         }
 
@@ -97,13 +98,94 @@
             width: 100%;
             height: 100%;
             object-fit: cover;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .image-container img:hover {
+            transform: scale(1.02);
+        }
+
+        /* 图片放大模态框 */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 9999;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.95);
+            animation: fadeIn 0.2s;
+        }
+
+        .modal.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            max-width: 90%;
+            max-height: 90vh;
+            object-fit: contain;
+            animation: zoomIn 0.3s;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 30px;
+            right: 40px;
+            color: white;
+            font-size: 40px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .modal-close:hover {
+            transform: scale(1.2);
+        }
+
+        .modal-label {
+            position: absolute;
+            top: 30px;
+            left: 40px;
+            color: white;
+            font-size: 20px;
+            font-weight: 600;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 10px 20px;
+            border-radius: 8px;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        @keyframes zoomIn {
+            from {
+                transform: scale(0.8);
+                opacity: 0;
+            }
+
+            to {
+                transform: scale(1);
+                opacity: 1;
+            }
         }
 
         .image-label {
             position: absolute;
             top: 10px;
             left: 10px;
-            background: rgba(0,0,0,0.7);
+            background: rgba(0, 0, 0, 0.7);
             color: white;
             padding: 4px 8px;
             border-radius: 4px;
@@ -181,6 +263,7 @@
         }
     </style>
 </head>
+
 <body>
     <div class="container">
         <h1>🎨 模特图片评审系统</h1>
@@ -199,6 +282,13 @@
     </div>
 
     <button class="export-btn" onclick="exportRatings()">📥 导出评价结果</button>
+
+    <!-- 图片放大模态框 -->
+    <div id="imageModal" class="modal" onclick="closeModal()">
+        <span class="modal-close" onclick="closeModal()">&times;</span>
+        <div id="modalLabel" class="modal-label"></div>
+        <img class="modal-content" id="modalImage">
+    </div>
 
     <script>
         let models = [];
@@ -226,7 +316,7 @@
                 updateStats();
                 renderModels();
             } catch (error) {
-                document.getElementById('modelList').innerHTML = 
+                document.getElementById('modelList').innerHTML =
                     '<div class="no-results">加载失败，请确保服务器正在运行</div>';
             }
         }
@@ -236,15 +326,15 @@
             const good = Object.values(ratings).filter(r => r === 'good').length;
             const bad = Object.values(ratings).filter(r => r === 'bad').length;
             const unrated = models.length - good - bad;
-            
-            document.getElementById('totalCount').textContent = 
+
+            document.getElementById('totalCount').textContent =
                 `总计: ${models.length} | Good: ${good} | Bad: ${bad} | 未评价: ${unrated}`;
         }
 
         // 渲染模特列表
         function renderModels() {
             const container = document.getElementById('modelList');
-            
+
             let filteredModels = models;
             if (currentFilter === 'good') {
                 filteredModels = models.filter(m => ratings[m.id] === 'good');
@@ -264,11 +354,11 @@
                     <div class="brand-name">${model.brand}</div>
                     <div class="image-container">
                         <div class="image-label">原模特</div>
-                        <img src="${model.original}" alt="原模特" loading="lazy">
+                        <img src="${model.original}" alt="原模特" loading="lazy" onclick="openModal('${model.original}', '原模特 - ${model.brand}')">
                     </div>
                     <div class="image-container">
                         <div class="image-label">新模特</div>
-                        <img src="${model.generated}" alt="新模特" loading="lazy">
+                        <img src="${model.generated}" alt="新模特" loading="lazy" onclick="openModal('${model.generated}', '新模特 - ${model.brand}')">
                     </div>
                     <div class="rating-buttons">
                         <button class="rating-btn good ${ratings[model.id] === 'good' ? 'selected' : ''}" 
@@ -328,9 +418,36 @@
             link.click();
         }
 
+        // 图片放大功能
+        function openModal(imageSrc, label) {
+            const modal = document.getElementById('imageModal');
+            const modalImg = document.getElementById('modalImage');
+            const modalLabel = document.getElementById('modalLabel');
+
+            modal.classList.add('active');
+            modalImg.src = imageSrc;
+            modalLabel.textContent = label;
+
+            // 防止事件冒泡
+            event.stopPropagation();
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('imageModal');
+            modal.classList.remove('active');
+        }
+
+        // ESC键关闭模态框
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape') {
+                closeModal();
+            }
+        });
+
         // 初始化
         loadRatings();
         loadModels();
     </script>
 </body>
+
 </html>
